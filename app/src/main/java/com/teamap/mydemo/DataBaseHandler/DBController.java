@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.teamap.mydemo.Entity.tblDanhmuc;
 import com.teamap.mydemo.Entity.tblQuan;
 
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ import java.util.List;
 public class DBController extends SQLiteOpenHelper {
 
     public DBController(Context applicationcontext) {
-        super(applicationcontext, "Data.db", null, 1);
+        super(applicationcontext, "Data2.db", null, 1);
     }
 
     //Creates Table
@@ -24,7 +25,7 @@ public class DBController extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase database) {
         String query,query2;
         query = "CREATE TABLE tblDanhmuc ( PK_IDDanhmuc INTEGER, tendanhmuc TEXT)";
-        query2 = "CREATE TABLE tblquan ( PK_IDQuan INTEGER, tenquan TEXT, diachi TEXT, toado TEXT, daden INTEGER, yeuthich INTEGER, mota TEXT, monnoibat TEXT,FK_IDDanhmuc INTEGER)";
+        query2 = "CREATE TABLE tblquan ( PK_IDQuan INTEGER, tenquan TEXT, diachi TEXT, toado TEXT, daden INTEGER, yeuthich INTEGER, mota TEXT,anhdaidien TEXT, monnoibat TEXT,FK_IDDanhmuc INTEGER)";
 
         database.execSQL(query);
         database.execSQL(query2);
@@ -59,22 +60,23 @@ public class DBController extends SQLiteOpenHelper {
      *
      * @return
      */
-    public ArrayList<HashMap<String, String>> getAllDanhmuc() {
-        ArrayList<HashMap<String, String>> usersList;
-        usersList = new ArrayList<HashMap<String, String>>();
-        String selectQuery = "SELECT  * FROM tblDanhmuc";
+    public List<tblDanhmuc> getAllDanhmuc() {
+
+        List<tblDanhmuc> danhmucList = new ArrayList<tblDanhmuc>();
+        String selectQuery = "SELECT  * FROM tbldanhmuc";
         SQLiteDatabase database = this.getWritableDatabase();
         Cursor cursor = database.rawQuery(selectQuery, null);
         if (cursor.moveToFirst()) {
             do {
-                HashMap<String, String> map = new HashMap<String, String>();
-                map.put("PK_IDDanhmuc", cursor.getString(0));
-                map.put("tendanhmuc", cursor.getString(1));
-                usersList.add(map);
+                tblDanhmuc dm = new tblDanhmuc();
+                dm.setPK_IDDanhmuc(cursor.getInt(0));
+                dm.setTendanhmuc(cursor.getString(1));
+
+                danhmucList.add(dm);
             } while (cursor.moveToNext());
         }
         database.close();
-        return usersList;
+        return danhmucList;
     }
 
 
@@ -103,8 +105,9 @@ public class DBController extends SQLiteOpenHelper {
                 quan.setDaden(cursor.getInt(4));
                 quan.setYeuthich(cursor.getInt(5));
                 quan.setMota(cursor.getString(6));
-                quan.setMonnoibat(cursor.getString(7));
-                quan.setFK_IDDanhmuc(cursor.getInt(8));
+                quan.setAnhdaidien(cursor.getString(7));
+                quan.setMonnoibat(cursor.getString(8));
+                quan.setFK_IDDanhmuc(cursor.getInt(9));
 
                 quanList.add(quan);
             } while (cursor.moveToNext());
@@ -123,6 +126,7 @@ public class DBController extends SQLiteOpenHelper {
         values.put("daden", quans.getDaden());
         values.put("yeuthich", quans.getYeuthich());
         values.put("mota", quans.getMota());
+        values.put("anhdaidien", quans.getAnhdaidien());
         values.put("monnoibat", quans.getMonnoibat());
         values.put("FK_IDDanhmuc", quans.getFK_IDDanhmuc());
         database.insert("tblquan", null, values);
