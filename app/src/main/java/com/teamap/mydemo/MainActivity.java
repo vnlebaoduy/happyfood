@@ -13,7 +13,9 @@ import com.google.gson.GsonBuilder;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
+import com.teamap.mydemo.DataBaseHandler.ConnectionDetector;
 import com.teamap.mydemo.DataBaseHandler.DBController;
+import com.teamap.mydemo.Entity.GlobalVariables;
 import com.teamap.mydemo.Entity.tblQuan;
 
 import org.json.JSONArray;
@@ -31,14 +33,15 @@ public class MainActivity extends ActionBarActivity {
     DBController controller = new DBController(this);
     HashMap<String, String> queryValues;
     ProgressDialog prgDialog;
+    ConnectionDetector cd;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        cd=new ConnectionDetector(getApplicationContext());
         prgDialog = new ProgressDialog(this);
-        prgDialog.setMessage("Transferring Data from Remote MySQL DB and Syncing SQLite. Please wait...");
+        prgDialog.setMessage("Transferring Data. Please wait...");
         prgDialog.setCancelable(false);
     }
 
@@ -63,8 +66,14 @@ public class MainActivity extends ActionBarActivity {
         }
         if (id == R.id.refresh) {
             // Transfer data from remote MySQL DB to SQLite on Android and perform Sync
-            syncSQLiteMySQLDBDM();
-            syncSQLiteMySQLDBQuan();
+            if (cd.isConnectingToInternet()) {
+                syncSQLiteMySQLDBDM();
+            }
+            else
+            {
+                Toast.makeText(getApplicationContext(),"Hãy kiểm tra kết nối Internet",Toast.LENGTH_SHORT).show();
+
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -78,7 +87,7 @@ public class MainActivity extends ActionBarActivity {
         // Show ProgressBar
         prgDialog.show();
         // Make Http call to getusers.php
-        client.post("http://192.168.0.102/syncDB/get_all_danhmuc.php", params, new AsyncHttpResponseHandler() {
+        client.post(GlobalVariables.SERVER_URL+"get_all_danhmuc.php", params, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(String response) {
                 // Hide ProgressBar
@@ -104,17 +113,8 @@ public class MainActivity extends ActionBarActivity {
                 }
             }
         });
-     }
 
-    public void syncSQLiteMySQLDBQuan() {
-        // Create AsycHttpClient object
-        AsyncHttpClient client = new AsyncHttpClient();
-        // Http Request Params Object
-        RequestParams params = new RequestParams();
-        // Show ProgressBar
-        prgDialog.show();
-        // Make Http call to getusers.php
-        client.post("http://192.168.0.102/syncDB/get_all_quan.php", params, new AsyncHttpResponseHandler() {
+        client.post(GlobalVariables.SERVER_URL+"get_all_quan.php", params, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(String response) {
                 // Hide ProgressBar
@@ -139,9 +139,9 @@ public class MainActivity extends ActionBarActivity {
                 }
             }
         });
+     }
 
 
-    }
 
     public void updateSQLiteDM(String response) {
         ArrayList<HashMap<String, String>> usersynclist;
@@ -202,7 +202,7 @@ public class MainActivity extends ActionBarActivity {
                     quans.setToado(obj.get("toado").toString());
                     quans.setDaden(Integer.parseInt(obj.get("daden").toString()));
                     quans.setYeuthich(Integer.parseInt(obj.get("yeuthich").toString()));
-                    quans.setToado(obj.get("mota").toString());
+                    quans.setMota(obj.get("mota").toString());
                     quans.setMonnoibat(obj.get("monnoibat").toString());
                     quans.setFK_IDDanhmuc(Integer.parseInt(obj.get("FK_IDDanhmuc").toString()));
 

@@ -16,7 +16,7 @@ import java.util.List;
 public class DBController extends SQLiteOpenHelper {
 
     public DBController(Context applicationcontext) {
-        super(applicationcontext, "happyfood.db", null, 1);
+        super(applicationcontext, "Data.db", null, 1);
     }
 
     //Creates Table
