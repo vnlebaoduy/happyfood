@@ -13,14 +13,14 @@ public class tblQuan {
     private String mota;
     private String monnoibat;
     private int FK_IDDanhmuc;
-    private String anhdaidien;
+    private String linkanh;
 
-    public String getAnhdaidien() {
-        return anhdaidien;
+    public String getLinkanh() {
+        return linkanh;
     }
 
-    public void setAnhdaidien(String anhdaidien) {
-        this.anhdaidien = anhdaidien;
+    public void setLinkanh(String linkanh) {
+        this.linkanh = linkanh;
     }
 
     public int getPK_IDQuan() {
@@ -95,7 +95,7 @@ public class tblQuan {
         this.FK_IDDanhmuc = FK_IDDanhmuc;
     }
 
-    public tblQuan(int PK_IDQuan, String tenquan, String diachi, String toado, int daden, int yeuthich, String mota, String monnoibat, int FK_IDDanhmuc, String anhdaidien) {
+    public tblQuan(int PK_IDQuan, String tenquan, String diachi, String toado, int daden, int yeuthich, String mota, String monnoibat, int FK_IDDanhmuc) {
         this.PK_IDQuan = PK_IDQuan;
         this.tenquan = tenquan;
         this.diachi = diachi;
@@ -105,7 +105,6 @@ public class tblQuan {
         this.mota = mota;
         this.monnoibat = monnoibat;
         this.FK_IDDanhmuc = FK_IDDanhmuc;
-        this.anhdaidien = anhdaidien;
     }
 
     public tblQuan() {

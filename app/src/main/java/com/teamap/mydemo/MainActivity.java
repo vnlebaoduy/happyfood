@@ -2,10 +2,18 @@ package com.teamap.mydemo;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
+import android.os.StrictMode;
+import android.preference.PreferenceManager;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -17,21 +25,24 @@ import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 import com.teamap.mydemo.DataBaseHandler.ConnectionDetector;
 import com.teamap.mydemo.DataBaseHandler.DBController;
-import com.teamap.mydemo.DataBaseHandler.imageOnServer;
 import com.teamap.mydemo.Entity.GlobalVariables;
+import com.teamap.mydemo.Entity.tblAnh;
 import com.teamap.mydemo.Entity.tblQuan;
 
+import org.apache.http.util.ByteArrayBuffer;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URI;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -41,43 +52,84 @@ public class MainActivity extends ActionBarActivity {
     HashMap<String, String> queryValues;
     ProgressDialog prgDialog;
     ConnectionDetector cd;
-    File mediaStorageDir;
-    tblQuan quan;
+    Toolbar toolbar;
+    ViewPager pager;
+    ViewPagerAdapter adapter;
+    SlidingTabLayout tabs;
+    CharSequence Titles[] = {"Trang chủ", "Danh mục"};
+    int Numboftabs = 2;
+    File file = new File(GlobalVariables.PATH + "/images/");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        cd=new ConnectionDetector(getApplicationContext());
+        if (android.os.Build.VERSION.SDK_INT > 9) {
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+        }
+        cd = new ConnectionDetector(getApplicationContext());
+
+
         prgDialog = new ProgressDialog(this);
         prgDialog.setMessage("Đang tải dữ liệu. Hãy đợi trong ít phút...");
         prgDialog.setCancelable(false);
 
 
-        // Xử lý thông tin file ảnh
-        File file;
-        file = getFileFromUri("file://" + mediaStorageDir.getPath() + "/" + quan.getAnhdaidien());
-
-        if (file == null && cd.isConnectingToInternet()) {
-            try {
-                imageOnServer.downloadFileFromServer(quan.getAnhdaidien());
-                file = getFileFromUri("file://" + mediaStorageDir.getPath() + "/" + quan.getAnhdaidien());
-            } catch (MalformedURLException e) {
-                // TODO Auto-generated catch block
-				/*Toast.makeText(getApplicationContext(), e.getMessage(),
-						Toast.LENGTH_LONG).show();*/
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-				/*Toast.makeText(getApplicationContext(), e.getMessage(),
-						Toast.LENGTH_LONG).show();*/
-            }
+        if (GlobalVariables.danhmucGList.size() == 0) {
+            GlobalVariables.danhmucGList = controller.getAllDanhmuc();
+//            Toast.makeText(getApplicationContext(), "Loaded Danh muc: "+ GlobalVariables.danhmucGList.size(),
+//                    Toast.LENGTH_SHORT).show();
+        }
+        if (GlobalVariables.quanGList.size() == 0) {
+            GlobalVariables.quanGList = controller.getAllQuan();
+//            Toast.makeText(getApplicationContext(), "Loaded Quan: "+ GlobalVariables.quanGList.size(),
+//                    Toast.LENGTH_SHORT).show();
+        }
+        if (GlobalVariables.anhGList.size() == 0) {
+            GlobalVariables.anhGList = controller.getAllAnh();
+//            Toast.makeText(getApplicationContext(), "Loaded Anh: "+ GlobalVariables.anhGList.size(),
+//                    Toast.LENGTH_SHORT).show();
         }
 
-//        if (file != null) { // Nếu file khác null thì sẽ được Decode thành file
-//            // Bitmap và hiển thị
-//            Bitmap bm = decodeSampledBitmapFromFile(file, 500, 500);
-//            anh.setImageBitmap(bm);
-//        }
+        if (GlobalVariables.quanAllGList.size() == 0) {
+            GlobalVariables.quanAllGList = controller.getListQuan();
+//            Toast.makeText(getApplicationContext(), "Loaded Anh: "+ GlobalVariables.anhGList.size(),
+//                    Toast.LENGTH_SHORT).show();
+        }
+        file.mkdirs();
+
+
+
+        // Creating The Toolbar and setting it as the Toolbar for the activity
+
+        toolbar = (Toolbar) findViewById(R.id.tool_bar);
+        setSupportActionBar(toolbar);
+
+
+        // Creating The ViewPagerAdapter and Passing Fragment Manager, Titles fot the Tabs and Number Of Tabs.
+        adapter = new ViewPagerAdapter(getSupportFragmentManager(), Titles, Numboftabs);
+
+        // Assigning ViewPager View and setting the adapter
+        pager = (ViewPager) findViewById(R.id.pager);
+        pager.setAdapter(adapter);
+
+        // Assiging the Sliding Tab Layout View
+        tabs = (SlidingTabLayout) findViewById(R.id.tabs);
+        tabs.setDistributeEvenly(true); // To make the Tabs Fixed set this true, This makes the tabs Space Evenly in Available width
+
+        // Setting Custom Color for the Scroll bar indicator of the Tab View
+        tabs.setCustomTabColorizer(new SlidingTabLayout.TabColorizer() {
+            @Override
+            public int getIndicatorColor(int position) {
+                return getResources().getColor(R.color.tabsScrollColor);
+            }
+        });
+
+        // Setting the ViewPager For the SlidingTabsLayout
+        tabs.setViewPager(pager);
+
+
     }
 
 
@@ -85,18 +137,6 @@ public class MainActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-
-        if (GlobalVariables.danhmucGList.size()==0){
-            GlobalVariables.danhmucGList=controller.getAllDanhmuc();
-            Toast.makeText(getApplicationContext(), "Loaded Danh muc",
-            Toast.LENGTH_LONG).show();
-        }
-
-        if (GlobalVariables.quanGList.size()==0){
-            GlobalVariables.quanGList=controller.getAllQuan();
-            Toast.makeText(getApplicationContext(), "Loaded Quan",
-                    Toast.LENGTH_LONG).show();
-        }
         return true;
     }
 
@@ -114,11 +154,15 @@ public class MainActivity extends ActionBarActivity {
         if (id == R.id.refresh) {
             // Transfer data from remote MySQL DB to SQLite on Android and perform Sync
             if (cd.isConnectingToInternet()) {
-                syncSQLiteMySQLDBDM();
-            }
-            else
-            {
-                Toast.makeText(getApplicationContext(),"Hãy kiểm tra kết nối Internet",Toast.LENGTH_SHORT).show();
+                syncSQLiteMySQLDB();
+                long startTime = System.currentTimeMillis();
+                for (tblAnh downImg : GlobalVariables.anhGList) {
+                    DownloadFromUrl(GlobalVariables.PATH + "/images/" + downImg.getLinkanh(), GlobalVariables.SERVER_URL + "uploads/" + downImg.getLinkanh());
+                    //Toast.makeText(getApplicationContext(),downImg.getLinkanh(),Toast.LENGTH_SHORT).show();
+                }
+                Toast.makeText(getApplicationContext(), "Quá trình cập nhật hoàn tất !", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Hãy kiểm tra kết nối Internet", Toast.LENGTH_SHORT).show();
 
             }
             return true;
@@ -126,7 +170,7 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public void syncSQLiteMySQLDBDM() {
+    public void syncSQLiteMySQLDB() {
         // Create AsycHttpClient object
         AsyncHttpClient client = new AsyncHttpClient();
         // Http Request Params Object
@@ -134,7 +178,7 @@ public class MainActivity extends ActionBarActivity {
         // Show ProgressBar
         prgDialog.show();
         // Make Http call to getusers.php
-        client.post(GlobalVariables.SERVER_URL+"get_all_danhmuc.php", params, new AsyncHttpResponseHandler() {
+        client.post(GlobalVariables.SERVER_URL + "get_all_danhmuc.php", params, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(String response) {
                 // Hide ProgressBar
@@ -161,7 +205,7 @@ public class MainActivity extends ActionBarActivity {
             }
         });
 
-        client.post(GlobalVariables.SERVER_URL+"get_all_quan.php", params, new AsyncHttpResponseHandler() {
+        client.post(GlobalVariables.SERVER_URL + "get_all_quan.php", params, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(String response) {
                 // Hide ProgressBar
@@ -186,8 +230,33 @@ public class MainActivity extends ActionBarActivity {
                 }
             }
         });
-     }
 
+        client.post(GlobalVariables.SERVER_URL + "get_all_anh.php", params, new AsyncHttpResponseHandler() {
+            @Override
+            public void onSuccess(String response) {
+                // Hide ProgressBar
+                prgDialog.hide();
+                // Update SQLite DB with response sent by getusers.php
+                updateSQLiteAnh(response);
+            }
+
+            // When error occured
+            @Override
+            public void onFailure(int statusCode, Throwable error, String content) {
+                // TODO Auto-generated method stub
+                // Hide ProgressBar
+                prgDialog.hide();
+                if (statusCode == 404) {
+                    Toast.makeText(getApplicationContext(), "Requested resource not found", Toast.LENGTH_LONG).show();
+                } else if (statusCode == 500) {
+                    Toast.makeText(getApplicationContext(), "Something went wrong at server end", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(getApplicationContext(), "Unexpected Error occcured! [Most common Error: Device might not be connected to Internet]",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+    }
 
 
     public void updateSQLiteDM(String response) {
@@ -217,6 +286,7 @@ public class MainActivity extends ActionBarActivity {
                 // Inform Remote MySQL DB about the completion of Sync activity by passing Sync status of Users
                 //updateMySQLSyncSts(gson.toJson(usersynclist));
                 // Reload the Main Activity
+                reloadActivity();
 
             }
         } catch (JSONException e) {
@@ -236,7 +306,7 @@ public class MainActivity extends ActionBarActivity {
             // If no of array elements is not zero
             if (arr.length() != 0) {
                 // Loop through each array element, get JSON object which has userid and username
-                tblQuan quans=new tblQuan();
+                tblQuan quans = new tblQuan();
                 controller.removeQuan();
                 for (int i = 0; i < arr.length(); i++) {
                     // Get JSON object
@@ -249,7 +319,6 @@ public class MainActivity extends ActionBarActivity {
                     quans.setToado(obj.get("toado").toString());
                     quans.setDaden(Integer.parseInt(obj.get("daden").toString()));
                     quans.setYeuthich(Integer.parseInt(obj.get("yeuthich").toString()));
-                    quans.setAnhdaidien(obj.get("anhdaidien").toString());
                     quans.setMota(obj.get("mota").toString());
                     quans.setMonnoibat(obj.get("monnoibat").toString());
                     quans.setFK_IDDanhmuc(Integer.parseInt(obj.get("FK_IDDanhmuc").toString()));
@@ -260,13 +329,42 @@ public class MainActivity extends ActionBarActivity {
                 // Inform Remote MySQL DB about the completion of Sync activity by passing Sync status of Users
                 //updateMySQLSyncSts(gson.toJson(usersynclist));
                 // Reload the Main Activity
-                reloadActivity();
+
             }
         } catch (JSONException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
+
+    public void updateSQLiteAnh(String response) {
+        Gson gson = new GsonBuilder().create();
+        try {
+            // Extract JSON array from the response
+            JSONArray arr = new JSONArray(response);
+            System.out.println(arr.length());
+            // If no of array elements is not zero
+            if (arr.length() != 0) {
+                // Loop through each array element, get JSON object which has userid and username
+                tblAnh anhs = new tblAnh();
+                controller.removeAnh();
+                for (int i = 0; i < arr.length(); i++) {
+                    // Get JSON object
+                    JSONObject obj = (JSONObject) arr.get(i);
+                    anhs.setPK_IDAnh(Integer.parseInt(obj.get("PK_IDAnh").toString()));
+                    anhs.setAnhcover(Integer.parseInt(obj.get("anhcover").toString()));
+                    anhs.setLinkanh(obj.get("linkanh").toString());
+                    anhs.setFK_IDQuan(Integer.parseInt(obj.get("FK_IDQuan").toString()));
+                    controller.insertQuan(anhs);
+
+                }
+            }
+        } catch (JSONException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
 
     // Reload MainActivity
     public void reloadActivity() {
@@ -275,77 +373,28 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
-
-    private Bitmap decodeSampledBitmapFromFile(File file, int reqWidth,
-                                               int reqHeight) {
-        // TODO Auto-generated method stub
-        // First decode with inJustDecodeBounds=true to check dimensions
-        final BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-
-        // Calculate inSampleSize
-        options.inSampleSize = calculateInSampleSize(options, reqWidth,
-                reqHeight);
-
-        // Decode bitmap with inSampleSize set
-        options.inJustDecodeBounds = false;
-        return BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-    }
-
-    private File getFileFromUri(String imgUri) {
-        // TODO Auto-generated method stub
+    public void DownloadFromUrl(String fileName, String urlImage) {
 
         try {
-            URI uri = URI.create(imgUri);
-            File file = new File(uri);
-            if (file != null) {
-                if (file.canRead()) {
-                    return file;
-                }
+            URL url = new URL(urlImage); //you can write here any link
+            File file = new File(fileName);
+            long startTime = System.currentTimeMillis();
+            URLConnection ucon = url.openConnection();
+            InputStream is = ucon.getInputStream();
+            BufferedInputStream bis = new BufferedInputStream(is);
+            ByteArrayBuffer baf = new ByteArrayBuffer(50);
+            int current = 0;
+            while ((current = bis.read()) != -1) {
+                baf.append((byte) current);
             }
-        } catch (Exception e) {
-            return null;
+
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(baf.toByteArray());
+            fos.close();
+        } catch (IOException e) {
+            Toast.makeText(getApplicationContext(), "Error:" + e, Toast.LENGTH_SHORT).show();
         }
 
-        return null;
+
     }
-
-    /** Calculate the scaling factor */
-    public static int calculateInSampleSize(BitmapFactory.Options options,
-                                            int reqWidth, int reqHeight) {
-        // Raw height and width of image
-        final int height = options.outHeight;
-        final int width = options.outWidth;
-        int inSampleSize = 1;
-
-        if (height > reqHeight || width > reqWidth) {
-
-            // Calculate ratios of height and width to requested height and
-            // width
-            final int heightRatio = Math.round((float) height
-                    / (float) reqHeight);
-            final int widthRatio = Math.round((float) width / (float) reqWidth);
-
-            // Choose the smallest ratio as inSampleSize value, this will
-            // guarantee
-            // a final image with both dimensions larger than or equal to the
-            // requested height and width.
-            inSampleSize = heightRatio < widthRatio ? heightRatio : widthRatio;
-        }
-
-        return inSampleSize;
-    }
-
-    public String getImageName() { // Xử lý chuỗi Uril của ảnh để lấy ra tên ảnh
-        String imageName = "";
-        File file = getFileFromUri(quan.getAnhdaidien());
-        if (file != null) {
-            String temp[] = quan.getAnhdaidien().split("/");
-            imageName = temp[temp.length - 1];
-        } else {
-            imageName = quan.getAnhdaidien();
-        }
-        return imageName;
-}
 }
